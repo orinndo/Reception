@@ -205,7 +205,7 @@
       return;
     }
     const list = ranges.map(r => `${r.start}〜${r.end}`).join(' / ');
-    hoursNote.innerHTML = `この日の受付時間（設定）： <strong>${list}</strong> ／ 時間枠は<strong>30分刻み</strong>で表示します。`;
+    /* removed */
   }
 
   function buildTimeButtons(container, slots, selectedSet, disabledAll) {
@@ -213,7 +213,7 @@
     if (disabledAll) {
       const p = document.createElement('div');
       p.className = 'note';
-      p.textContent = 'この日は休診のため、時間枠を選択できません。';
+      /* removed */
       container.appendChild(p);
       return;
     }
