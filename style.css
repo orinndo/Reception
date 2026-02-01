@@ -295,7 +295,7 @@ body{
   background: #fff;
   cursor:pointer;
 }
-.slot:hover{ border-color: rgba(239,68,68,.35); }
+.slot:hover{ border-color: rgba(11,99,246,.25); }
 .slot__en{
   font-weight: 900;
   font-size: 14px;
@@ -465,3 +465,26 @@ code{
   font-size: 12px;
   color: var(--muted);
 }
+
+
+/* Slot row + explicit delete button (prevents accidental delete) */
+.slot__row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+}
+.slot__text{ flex: 1; min-width: 0; }
+
+.slot__delete{
+  appearance:none;
+  border: 1px solid rgba(239,68,68,.35);
+  background: rgba(239,68,68,.08);
+  color: #991b1b;
+  font-weight: 900;
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor:pointer;
+  white-space: nowrap;
+}
+.slot__delete:hover{ filter: brightness(.98); }

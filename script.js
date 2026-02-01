@@ -193,10 +193,8 @@
   }
 
   function renderHoursNote(dateObj) {
-    if (isClosedByToggle()) {
-      hoursNote.innerHTML = `この日は <strong>休診扱い</strong> です（祝日/臨時休診フラグ）。`;
-      return;
-    }
+    hoursNote.textContent = '';
+  }
     const ranges = currentHoursForDate(dateObj);
     if (!ranges.length) {
       hoursNote.innerHTML = `この日は <strong>休診日</strong> です（時間枠は表示しません）。`;
@@ -268,7 +266,7 @@
     if (disabledAll) {
       const p = document.createElement('div');
       p.className = 'note';
-      p.textContent = 'この日は休診のため、予約確定の時間枠を選択できません。';
+      /* removed */
       confirmTimeGrid.appendChild(p);
       return;
     }
@@ -303,18 +301,24 @@
       const dateObj = parseISODate(s.dateISO);
       const el = document.createElement('div');
       el.className = 'slot';
-      el.title = 'タップで削除';
       el.innerHTML = `
-        <div class="slot__en">${formatDateEN(dateObj)} at ${formatTimeEN(s.timeHM)}</div>
-        <div class="slot__jp">${formatDateJP(dateObj)} ${formatTimeJP(s.timeHM)}</div>
-        <div class="slot__meta">${s.dateISO} / ${s.timeHM}</div>
+        <div class="slot__row">
+          <div class="slot__text">
+            <div class="slot__en">${formatDateEN(dateObj)} at ${formatTimeEN(s.timeHM)}</div>
+            <div class="slot__jp">${formatDateJP(dateObj)} ${formatTimeJP(s.timeHM)}</div>
+            <div class="slot__meta">${s.dateISO} / ${s.timeHM}</div>
+          </div>
+          <button class="slot__delete" type="button" aria-label="削除">削除</button>
+        </div>
       `;
-      el.addEventListener('click', () => {
-        // remove by matching key
+      const delBtn = el.querySelector('.slot__delete');
+      delBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
         const key = `${s.dateISO}T${s.timeHM}`;
         availableSlots = availableSlots.filter(x => `${x.dateISO}T${x.timeHM}` !== key);
         renderSlotList();
       });
+
       slotList.appendChild(el);
     });
   }

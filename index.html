@@ -28,28 +28,7 @@
         <div class="card__subtitle">日付と空き時間を選んで、患者さんに見せる画面を自動生成します。</div>
 
         <div class="grid">
-          <div class="field">
-            <label for="dateInput" class="label">日付（西暦）</label>
-            <input id="dateInput" type="date" class="input" />
-          </div>
-
-          <div class="field">
-            <label class="label">休診日フラグ</label>
-            <div class="switches">
-              <label class="check">
-                <input id="holidayToggle" type="checkbox" />
-                <span>祝日として扱う</span>
-              </label>
-              <label class="check">
-                <input id="customClosedToggle" type="checkbox" />
-                <span>本日休診（臨時）</span>
-              </label>
-            </div>
-            <div class="hint">
-              ※ 祝日判定は端末単体では自動取得できないため、必要時にONにしてください。
-            </div>
-          </div>
-        </div>
+          
 
         <div class="divider"></div>
 
@@ -79,7 +58,7 @@
             <div class="panel-col">
               <div class="label-row">
                 <div class="label">提示する空き枠（編集可）</div>
-                <div class="badge badge--muted">タップで削除</div>
+                <div class="badge badge--muted">削除ボタンで削除</div>
               </div>
 
               <div id="slotList" class="slot-list" aria-live="polite"></div>
