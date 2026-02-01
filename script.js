@@ -22,9 +22,7 @@
 
   // ====== DOM ======
   const dateInput = document.getElementById('dateInput');
-  const holidayToggle = document.getElementById('holidayToggle');
-  const customClosedToggle = document.getElementById('customClosedToggle');
-
+    
   const timeGrid = document.getElementById('timeGrid');
   const confirmTimeGrid = document.getElementById('confirmTimeGrid');
   const dayInfo = document.getElementById('dayInfo');
@@ -159,7 +157,7 @@
   }
 
   function isClosedByToggle() {
-    return holidayToggle.checked || customClosedToggle.checked;
+    return false;
   }
 
   function currentHoursForDate(dateObj) {
@@ -453,9 +451,7 @@
     renderSlotList();
   });
 
-  holidayToggle.addEventListener('change', renderTimeGrids);
-  customClosedToggle.addEventListener('change', renderTimeGrids);
-
+    
   clearSelectionBtn.addEventListener('click', () => {
     selectedTimes = new Set();
     renderTimeGrids();
