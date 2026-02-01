@@ -382,6 +382,8 @@
   // ====== PATIENT RENDER ======
   function renderPatientAvailability() {
     const sorted = sortSlots(uniqueSlots(availableSlots));
+    const examSet = new Set(sorted.map(s => s.examKey).filter(Boolean));
+    const multiExam = examSet.size > 1;
     if (!sorted.length) {
       patientBody.innerHTML = `
         <div class="patient-msg-en">No available appointment slots are shown.</div>
