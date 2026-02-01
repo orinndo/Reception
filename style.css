@@ -579,19 +579,3 @@ body{ overflow-x: hidden; }
 .patient-slot .slot__exam{
   margin-top: 8px;
 }
-
-.ver{
-  display:inline-block;
-  margin-left:8px;
-  font-size:12px;
-  font-weight:900;
-  padding:2px 8px;
-  border-radius:999px;
-  background: rgba(11,99,246,.10);
-  color: rgba(11,99,246,.95);
-}
-.verline{
-  margin-top:10px;
-  font-size:12px;
-  color: var(--muted);
-}

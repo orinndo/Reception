@@ -250,7 +250,7 @@
     if (disabledAll) {
       const p = document.createElement('div');
       p.className = 'note';
-      /* removed */
+      p.textContent = '休診日のため、時間枠は表示できません。';
       container.appendChild(p);
       return;
     }
@@ -307,7 +307,7 @@
     if (disabledAll) {
       const p = document.createElement('div');
       p.className = 'note';
-      /* removed */
+      p.textContent = '休診日のため、時間枠は表示できません。';
       confirmTimeGrid.appendChild(p);
       return;
     }
@@ -547,7 +547,6 @@
 
   function showPatient(mode) {
     patientMode = mode;
-    document.body.dataset.lastPatientMode = mode;
 
     // Switch view first so the button always "does something"
     staffView.classList.add('is-hidden');
