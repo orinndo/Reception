@@ -384,6 +384,7 @@
     const sorted = sortSlots(uniqueSlots(availableSlots));
     const examSet = new Set(sorted.map(s => s.examKey).filter(Boolean));
     const multiExam = examSet.size > 1;
+
     if (!sorted.length) {
       patientBody.innerHTML = `
         <div class="patient-msg-en">No available appointment slots are shown.</div>
@@ -393,80 +394,6 @@
           <div class="patient-dt-jp">スタッフにお声かけください。</div>
         </div>
       `;
-
-    // Attach tap-to-select behavior (patient)
-    const slotsWrap = document.getElementById('patientSlots');
-    const selectedBox = document.getElementById('patientSelected');
-    const selectedEN = document.getElementById('patientSelectedEN');
-    const selectedJP = document.getElementById('patientSelectedJP');
-    const okBtn = document.getElementById('patientConfirmChoiceBtn');
-    const clearBtn = document.getElementById('patientClearChoiceBtn');
-
-    if (slotsWrap) {
-      const slotEls = Array.from(slotsWrap.querySelectorAll('.patient-slot'));
-      slotEls.forEach(el => {
-        el.addEventListener('click', () => {
-          slotEls.forEach(x => x.classList.remove('is-selected'));
-          el.classList.add('is-selected');
-          patientChosenKey = el.getAttribute('data-key');
-
-          const en = el.querySelector('.patient-slot-en')?.textContent || '';
-          const jp = el.querySelector('.patient-slot-jp')?.textContent || '';
-
-          selectedEN.textContent = `Selected: ${en}`;
-          selectedJP.textContent = `選択：${jp}`;
-          selectedBox.style.display = '';
-          okBtn.style.display = '';
-          clearBtn.style.display = '';
-        });
-      });
-    }
-
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        patientChosenKey = null;
-        document.querySelectorAll('.patient-slot.is-selected').forEach(x => x.classList.remove('is-selected'));
-        if (selectedBox) selectedBox.style.display = 'none';
-        if (okBtn) okBtn.style.display = 'none';
-        if (clearBtn) clearBtn.style.display = 'none';
-      });
-    }
-
-    if (okBtn) {
-      okBtn.addEventListener('click', () => {
-        if (!patientChosenKey) return;
-
-        const chosen = uniqueSlots(availableSlots).find(s => slotKey(s) === patientChosenKey);
-        if (!chosen) return;
-
-        const d = parseISODate(chosen.dateISO);
-        patientBody.innerHTML = `
-          <div class="patient-msg-en">You selected the following ${examLabelEN(chosen.examKey || selectedExam)} appointment slot.</div>
-          <div class="patient-msg-jp">以下の${examLabelJP(chosen.examKey || selectedExam)}の日時を選びました。</div>
-
-          <div class="patient-block">
-            <div class="patient-dt-en">${formatDateEN(d)}</div>
-            <div class="patient-dt-en" style="margin-top:8px;">${formatTimeEN(chosen.timeHM)}</div>
-            <div class="patient-dt-jp">${formatDateJP(d)} ${formatTimeJP(chosen.timeHM)}</div>
-          </div>
-
-          <div class="patient-slot-hint">
-            <div class="patient-slot-jp">Please show this screen to our staff.</div>
-            <div class="patient-slot-jp">※ この画面をスタッフにお見せください。</div>
-          </div>
-
-          <div class="patient-cta">
-            <button class="btn btn-ghost btn-wide" id="patientBackToListBtn" type="button">
-              Back to list / 候補に戻る
-            </button>
-          </div>
-        `;
-
-        const backBtn = document.getElementById('patientBackToListBtn');
-        if (backBtn) backBtn.addEventListener('click', () => renderPatientAvailability());
-      });
-    }
-
       return;
     }
 
@@ -478,6 +405,7 @@
         <div class="patient-slot" data-key="${slotKey(s)}">
           <div class="patient-slot-en">${en}</div>
           <div class="patient-slot-jp">${jp}</div>
+          <div class="slot__exam">${examLabelJP(s.examKey || selectedExam)}</div>
         </div>
       `;
     }).join('');
@@ -508,9 +436,81 @@
         </button>
       </div>
     `;
+
+    // Attach tap-to-select behavior (patient)
+    const slotsWrap = document.getElementById('patientSlots');
+    const selectedBox = document.getElementById('patientSelected');
+    const selectedEN = document.getElementById('patientSelectedEN');
+    const selectedJP = document.getElementById('patientSelectedJP');
+    const okBtn = document.getElementById('patientConfirmChoiceBtn');
+    const clearBtn = document.getElementById('patientClearChoiceBtn');
+
+    const slotEls = slotsWrap ? Array.from(slotsWrap.querySelectorAll('.patient-slot')) : [];
+    slotEls.forEach(el => {
+      el.addEventListener('click', () => {
+        slotEls.forEach(x => x.classList.remove('is-selected'));
+        el.classList.add('is-selected');
+        patientChosenKey = el.getAttribute('data-key');
+
+        const en = el.querySelector('.patient-slot-en')?.textContent || '';
+        const jp = el.querySelector('.patient-slot-jp')?.textContent || '';
+
+        selectedEN.textContent = `Selected: ${en}`;
+        selectedJP.textContent = `選択：${jp}`;
+        if (selectedBox) selectedBox.style.display = '';
+        if (okBtn) okBtn.style.display = '';
+        if (clearBtn) clearBtn.style.display = '';
+      });
+    });
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        patientChosenKey = null;
+        document.querySelectorAll('.patient-slot.is-selected').forEach(x => x.classList.remove('is-selected'));
+        if (selectedBox) selectedBox.style.display = 'none';
+        if (okBtn) okBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+      });
+    }
+
+    if (okBtn) {
+      okBtn.addEventListener('click', () => {
+        if (!patientChosenKey) return;
+
+        const chosen = uniqueSlots(availableSlots).find(s => slotKey(s) === patientChosenKey);
+        if (!chosen) return;
+
+        const d = parseISODate(chosen.dateISO);
+        patientBody.innerHTML = `
+          <div class="patient-msg-en">You selected the following ${examLabelEN(chosen.examKey || selectedExam)} appointment slot.</div>
+          <div class="patient-msg-jp">以下の${examLabelJP(chosen.examKey || selectedExam)}の日時を選びました。</div>
+
+          <div class="patient-block">
+            <div class="patient-dt-en">${formatDateEN(d)}</div>
+            <div class="patient-dt-en" style="margin-top:8px;">${formatTimeEN(chosen.timeHM)}</div>
+            <div class="patient-dt-jp">${formatDateJP(d)} ${formatTimeJP(chosen.timeHM)}</div>
+            <div class="slot__exam" style="margin-top:10px;">${examLabelJP(chosen.examKey || selectedExam)}</div>
+          </div>
+
+          <div class="patient-slot-hint">
+            <div class="patient-slot-jp">Please show this screen to our staff.</div>
+            <div class="patient-slot-jp">※ この画面をスタッフにお見せください。</div>
+          </div>
+
+          <div class="patient-cta">
+            <button class="btn btn-ghost btn-wide" id="patientBackToListBtn" type="button">
+              Back to list / 候補に戻る
+            </button>
+          </div>
+        `;
+
+        const backBtn = document.getElementById('patientBackToListBtn');
+        if (backBtn) backBtn.addEventListener('click', () => renderPatientAvailability());
+      });
+    }
   }
 
-  function renderPatientConfirm() {
+  function renderPatientConfirm() {() {
     const iso = dateInput.value;
     if (!iso || !confirmTime) {
       patientBody.innerHTML = `
@@ -547,13 +547,22 @@
 
   function showPatient(mode) {
     patientMode = mode;
-    if (mode === 'availability') renderPatientAvailability();
-    else renderPatientConfirm();
 
+    // Switch view first so the button always "does something"
     staffView.classList.add('is-hidden');
     patientView.classList.remove('is-hidden');
-
     toggleViewBtn.textContent = 'スタッフ画面に戻る / Back';
+
+    try {
+      if (mode === 'availability') renderPatientAvailability();
+      else renderPatientConfirm();
+    } catch (e) {
+      console.error(e);
+      patientBody.innerHTML = `
+        <div class="patient-msg-en">Sorry, something went wrong. Please ask our staff.</div>
+        <div class="patient-msg-jp">表示エラーが発生しました。スタッフにお声かけください。</div>
+      `;
+    }
   }
 
   function showStaff() {
