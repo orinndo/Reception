@@ -105,7 +105,12 @@
 
 
 
-  function slotKey(s){
+  
+  function examLabelBoth(key){
+    return `${examLabelJP(key)} / ${examLabelEN(key)}`;
+  }
+
+function slotKey(s){
     const ek = s.examKey || 'unknown';
     return `${s.dateISO}T${s.timeHM}|${ek}`;
   }
@@ -348,7 +353,7 @@
             <div class="slot__en">${formatDateEN(dateObj)} at ${formatTimeEN(s.timeHM)}</div>
             <div class="slot__jp">${formatDateJP(dateObj)} ${formatTimeJP(s.timeHM)}</div>
             <div class="slot__meta">${s.dateISO} / ${s.timeHM}</div>
-        <div class="slot__exam">${examLabelJP(s.examKey || selectedExam)}</div>
+        <div class="slot__exam">${examLabelBoth(s.examKey || selectedExam)}</div>
           </div>
           <button class="slot__delete" type="button" aria-label="削除">削除</button>
         </div>
@@ -405,7 +410,7 @@
         <div class="patient-slot" data-key="${slotKey(s)}">
           <div class="patient-slot-en">${en}</div>
           <div class="patient-slot-jp">${jp}</div>
-          <div class="slot__exam">${examLabelJP(s.examKey || selectedExam)}</div>
+          <div class="slot__exam">${examLabelBoth(s.examKey || selectedExam)}</div>
         </div>
       `;
     }).join('');
@@ -489,7 +494,7 @@
             <div class="patient-dt-en">${formatDateEN(d)}</div>
             <div class="patient-dt-en" style="margin-top:8px;">${formatTimeEN(chosen.timeHM)}</div>
             <div class="patient-dt-jp">${formatDateJP(d)} ${formatTimeJP(chosen.timeHM)}</div>
-            <div class="slot__exam" style="margin-top:10px;">${examLabelJP(chosen.examKey || selectedExam)}</div>
+            <div class="slot__exam" style="margin-top:10px;">${examLabelBoth(chosen.examKey || selectedExam)}</div>
           </div>
 
           <div class="patient-slot-hint">
@@ -535,7 +540,7 @@
 
     patientBody.innerHTML = `
       <div class="patient-msg-en">Your ${examLabelEN(selectedExam)} appointment is scheduled as follows.</div>
-      <div class="patient-msg-jp">以下の日程で${examLabelJP(selectedExam)}の予約が入っています。日付と時間をご確認ください。</div>
+      <div class="patient-msg-jp">以下の日程で${examLabelBoth(selectedExam)}の予約が入っています。日付と時間をご確認ください。</div>
 
       <div class="patient-block">
         <div class="patient-dt-en">${formatDateEN(dateObj)}</div>
