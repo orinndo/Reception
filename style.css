@@ -488,3 +488,20 @@ code{
   white-space: nowrap;
 }
 .slot__delete:hover{ filter: brightness(.98); }
+
+.field{ min-width:0; }
+
+
+/* iOS date input: prevent inner highlight/white edge from protruding */
+.input{
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+input[type="date"].input{
+  background-color: #fff;
+  width: 100%;
+  max-width: 100%;
+}
