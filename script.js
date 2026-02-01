@@ -84,9 +84,8 @@
       endoscopy: 'Endoscopy'
     };
     return map[key] || 'examination';
-  };
-    return map[key] || 'examination';
   }
+
 
   function examLabelJP(key){
     const map = {
@@ -102,9 +101,8 @@
       endoscopy: '内視鏡検査'
     };
     return map[key] || '検査';
-  };
-    return map[key] || '検査';
   }
+
 
 // ====== HELPERS ======
   const pad2 = (n) => String(n).padStart(2, '0');
