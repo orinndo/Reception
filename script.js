@@ -67,7 +67,14 @@
   let selectedExam = 'xray';
 
   // Patient-chosen slot key (availability mode)
-  let patientChosenKey = null;
+  let patientChosenKeys = [];
+
+  function togglePatientChoice(key){
+    const i = patientChosenKeys.indexOf(key);
+    if (i === -1) patientChosenKeys.push(key);
+    else patientChosenKeys.splice(i,1);
+  }
+
 
   
   function examLabelEN(key){
@@ -386,7 +393,9 @@ function slotKey(s){
 
   // ====== PATIENT RENDER ======
   function renderPatientAvailability() {
-    const sorted = sortSlots(uniqueSlots(availableSlots));
+    
+    patientChosenKeys = [];
+const sorted = sortSlots(uniqueSlots(availableSlots));
     const examSet = new Set(sorted.map(s => s.examKey).filter(Boolean));
     const multiExam = examSet.size > 1;
 
@@ -451,68 +460,109 @@ function slotKey(s){
     const clearBtn = document.getElementById('patientClearChoiceBtn');
 
     const slotEls = slotsWrap ? Array.from(slotsWrap.querySelectorAll('.patient-slot')) : [];
+
+    function refreshPatientSelectionUI(){
+      const selectedEls = slotEls.filter(x => x.classList.contains('is-selected'));
+
+      if (!selectedEls.length){
+        patientChosenKeys = [];
+        if (selectedBox) selectedBox.style.display = 'none';
+        if (okBtn) okBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        return;
+      }
+
+      // Keep patientChosenKeys in sync
+      patientChosenKeys = selectedEls
+        .map(el => el.getAttribute('data-key'))
+        .filter(Boolean);
+
+      const enLines = selectedEls.map(el => el.querySelector('.patient-slot-en')?.textContent || '').filter(Boolean);
+      const jpLines = selectedEls.map(el => el.querySelector('.patient-slot-jp')?.textContent || '').filter(Boolean);
+
+      selectedEN.textContent = `Selected (${enLines.length}): ${enLines.join(' / ')}`;
+      selectedJP.textContent = `選択（${jpLines.length}件）：${jpLines.join('／')}`;
+
+      if (selectedBox) selectedBox.style.display = '';
+      if (okBtn) okBtn.style.display = '';
+      if (clearBtn) clearBtn.style.display = '';
+
+      // Button labels for multi-select
+      if (okBtn) okBtn.textContent = 'Confirm selection / 選択を確定';
+      if (clearBtn) clearBtn.textContent = 'Clear selection / 選択をクリア';
+    }
+
     slotEls.forEach(el => {
       el.addEventListener('click', () => {
-        slotEls.forEach(x => x.classList.remove('is-selected'));
-        el.classList.add('is-selected');
-        patientChosenKey = el.getAttribute('data-key');
-
-        const en = el.querySelector('.patient-slot-en')?.textContent || '';
-        const jp = el.querySelector('.patient-slot-jp')?.textContent || '';
-
-        selectedEN.textContent = `Selected: ${en}`;
-        selectedJP.textContent = `選択：${jp}`;
-        if (selectedBox) selectedBox.style.display = '';
-        if (okBtn) okBtn.style.display = '';
-        if (clearBtn) clearBtn.style.display = '';
+        // Toggle selection
+        el.classList.toggle('is-selected');
+        refreshPatientSelectionUI();
       });
     });
 
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        patientChosenKey = null;
-        document.querySelectorAll('.patient-slot.is-selected').forEach(x => x.classList.remove('is-selected'));
-        if (selectedBox) selectedBox.style.display = 'none';
-        if (okBtn) okBtn.style.display = 'none';
-        if (clearBtn) clearBtn.style.display = 'none';
+        patientChosenKeys = [];
+        slotEls.forEach(x => x.classList.remove('is-selected'));
+        refreshPatientSelectionUI();
       });
     }
 
     if (okBtn) {
       okBtn.addEventListener('click', () => {
-        if (!patientChosenKey) return;
+        if (!patientChosenKeys || !patientChosenKeys.length) return;
 
-        const chosen = uniqueSlots(availableSlots).find(s => slotKey(s) === patientChosenKey);
-        if (!chosen) return;
+        const allSlots = uniqueSlots(availableSlots);
+        const chosenSlots = patientChosenKeys
+          .map(k => allSlots.find(s => slotKey(s) === k))
+          .filter(Boolean);
 
-        const d = parseISODate(chosen.dateISO);
+        if (!chosenSlots.length) return;
+
+        // Sort chosen slots by date/time
+        chosenSlots.sort((a,b) => (a.dateISO + a.timeHM).localeCompare(b.dateISO + b.timeHM));
+
+        const listHtml = chosenSlots.map(s => {
+          const d = parseISODate(s.dateISO);
+          return `
+            <div class="patient-block" style="margin-top:12px;">
+              <div class="patient-dt-en">${formatDateEN(d)} • ${formatTimeEN(s.timeHM)}</div>
+              <div class="patient-dt-jp">${formatDateJP(d)} ・ ${formatTimeJP(s.timeHM)}</div>
+              <div class="slot__exam" style="margin-top:10px;">${examLabelBoth(s.examKey || selectedExam)}</div>
+            </div>
+          `;
+        }).join('');
+
         patientBody.innerHTML = `
-          <div class="patient-msg-en">You selected the following ${examLabelEN(chosen.examKey || selectedExam)} appointment slot.</div>
-          <div class="patient-msg-jp">以下の${examLabelJP(chosen.examKey || selectedExam)}の日時を選びました。</div>
+          <div class="patient-msg-en">You selected the following appointment options.</div>
+          <div class="patient-msg-jp">以下の候補日時を選びました。</div>
 
-          <div class="patient-block">
-            <div class="patient-dt-en">${formatDateEN(d)}</div>
-            <div class="patient-dt-en" style="margin-top:8px;">${formatTimeEN(chosen.timeHM)}</div>
-            <div class="patient-dt-jp">${formatDateJP(d)} ${formatTimeJP(chosen.timeHM)}</div>
-            <div class="slot__exam" style="margin-top:10px;">${examLabelBoth(chosen.examKey || selectedExam)}</div>
+          ${listHtml}
+
+          <div class="patient-slot-hint" style="margin-top:14px;">
+            <div class="patient-slot-en">Please show this screen to staff.</div>
+            <div class="patient-slot-jp">この画面をスタッフにお見せください。</div>
           </div>
 
-          <div class="patient-slot-hint">
-            <div class="patient-slot-jp">Please show this screen to our staff.</div>
-            <div class="patient-slot-jp">※ この画面をスタッフにお見せください。</div>
-          </div>
-
-          <div class="patient-cta">
-            <button class="btn btn-ghost btn-wide" id="patientBackToListBtn" type="button">
-              Back to list / 候補に戻る
+          <div class="patient-cta" style="margin-top:14px;">
+            <button class="btn btn-ghost btn-wide" id="patientBackToChoicesBtn" type="button">
+              Back / 戻る
             </button>
           </div>
         `;
 
-        const backBtn = document.getElementById('patientBackToListBtn');
-        if (backBtn) backBtn.addEventListener('click', () => renderPatientAvailability());
+        const backBtn = document.getElementById('patientBackToChoicesBtn');
+        if (backBtn){
+          backBtn.addEventListener('click', () => {
+            // re-render availability list
+            renderPatientAvailability();
+          });
+        }
       });
     }
+
+    // Initial refresh (in case pre-selected in future)
+    refreshPatientSelectionUI();
   }
 
   function renderPatientConfirm() {
