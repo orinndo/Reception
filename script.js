@@ -510,7 +510,7 @@
     }
   }
 
-  function renderPatientConfirm() {() {
+  function renderPatientConfirm() {
     const iso = dateInput.value;
     if (!iso || !confirmTime) {
       patientBody.innerHTML = `
