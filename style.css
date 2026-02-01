@@ -563,3 +563,19 @@ body{ overflow-x: hidden; }
   color: var(--muted);
   line-height: 1.55;
 }
+
+
+/* Exam type badge */
+.slot__exam{
+  display:inline-block;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  background: rgba(11,99,246,.08);
+  color: rgba(11,99,246,.9);
+}
+.patient-slot .slot__exam{
+  margin-top: 8px;
+}

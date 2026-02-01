@@ -73,26 +73,36 @@
   function examLabelEN(key){
     const map = {
       xray: 'X-ray',
-      ultrasound: 'Ultrasound',
       ct: 'CT scan',
       ecg: 'ECG',
-      echo: 'Echocardiogram',
+      echo: 'Echocardiography',
+      tee: 'Transesophageal echocardiography',
+      ultrasound: 'Ultrasound examination',
+      abi: 'ABI test',
       pft: 'Pulmonary function test',
-      other: 'examination'
+      audiometry: 'Hearing test',
+      endoscopy: 'Endoscopy'
     };
+    return map[key] || 'examination';
+  };
     return map[key] || 'examination';
   }
 
   function examLabelJP(key){
     const map = {
       xray: 'レントゲン',
-      ultrasound: '超音波',
-      ct: 'CT',
+      ct: 'CT検査',
       ecg: '心電図',
       echo: '心エコー',
+      tee: '経食道心エコー',
+      ultrasound: '超音波検査',
+      abi: 'ABI',
       pft: '呼吸機能検査',
-      other: '検査'
+      audiometry: '聴力検査',
+      endoscopy: '内視鏡検査'
     };
+    return map[key] || '検査';
+  };
     return map[key] || '検査';
   }
 
@@ -334,6 +344,7 @@
             <div class="slot__en">${formatDateEN(dateObj)} at ${formatTimeEN(s.timeHM)}</div>
             <div class="slot__jp">${formatDateJP(dateObj)} ${formatTimeJP(s.timeHM)}</div>
             <div class="slot__meta">${s.dateISO} / ${s.timeHM}</div>
+        <div class="slot__exam">${examLabelJP(selectedExam)}</div>
           </div>
           <button class="slot__delete" type="button" aria-label="削除">削除</button>
         </div>
