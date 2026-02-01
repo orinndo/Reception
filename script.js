@@ -193,15 +193,8 @@
   }
 
   function renderHoursNote(dateObj) {
+    // (intentionally blank) no operational notes
     hoursNote.textContent = '';
-  }
-    const ranges = currentHoursForDate(dateObj);
-    if (!ranges.length) {
-      hoursNote.innerHTML = `この日は <strong>休診日</strong> です（時間枠は表示しません）。`;
-      return;
-    }
-    const list = ranges.map(r => `${r.start}〜${r.end}`).join(' / ');
-    /* removed */
   }
 
   function buildTimeButtons(container, slots, selectedSet, disabledAll) {

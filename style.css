@@ -505,3 +505,28 @@ input[type="date"].input{
   width: 100%;
   max-width: 100%;
 }
+
+
+/* Responsive tweaks (iPhone/Android) */
+.app-header{
+  flex-wrap: wrap;
+}
+.header-actions{
+  width: 100%;
+  display:flex;
+  justify-content:flex-end;
+}
+@media (max-width: 520px){
+  .header-actions{ justify-content:stretch; }
+  #toggleViewBtn{ width: 100%; }
+  .brand__title{ font-size: 18px; }
+  .brand__subtitle{ font-size: 13px; }
+  .card{ padding: 16px; }
+  .tab{ font-size: 14px; padding: 12px 14px; }
+  .time-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .time-btn{ font-size: 15px; padding: 14px 10px; }
+}
+
+/* Prevent horizontal overflow everywhere */
+body{ overflow-x: hidden; }
+.container, .card, .patient-card{ max-width: 100%; }
