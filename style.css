@@ -530,3 +530,36 @@ input[type="date"].input{
 /* Prevent horizontal overflow everywhere */
 body{ overflow-x: hidden; }
 .container, .card, .patient-card{ max-width: 100%; }
+
+
+/* Patient slot selection */
+.patient-slot{ cursor: pointer; }
+.patient-slot:active{ transform: scale(0.99); }
+.patient-slot.is-selected{
+  border-color: rgba(11,99,246,.55);
+  box-shadow: 0 0 0 5px rgba(11,99,246,.12);
+  background: rgba(11,99,246,.04);
+}
+.patient-cta{
+  margin-top: 14px;
+  display:flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.patient-selected{
+  margin-top: 14px;
+  border: 1px solid rgba(11,99,246,.25);
+  background: rgba(11,99,246,.06);
+  border-radius: 18px;
+  padding: 14px;
+}
+.patient-selected__en{
+  font-weight: 1000;
+  font-size: 18px;
+}
+.patient-selected__jp{
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+}

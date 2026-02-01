@@ -22,6 +22,7 @@
 
   // ====== DOM ======
   const dateInput = document.getElementById('dateInput');
+  const examType = document.getElementById('examType');
     
   const timeGrid = document.getElementById('timeGrid');
   const confirmTimeGrid = document.getElementById('confirmTimeGrid');
@@ -62,7 +63,40 @@
   // patientMode: 'availability' | 'confirm'
   let patientMode = 'availability';
 
-  // ====== HELPERS ======
+  // Exam type (staff-selected)
+  let selectedExam = 'xray';
+
+  // Patient-chosen slot key (availability mode)
+  let patientChosenKey = null;
+
+  
+  function examLabelEN(key){
+    const map = {
+      xray: 'X-ray',
+      ultrasound: 'Ultrasound',
+      ct: 'CT scan',
+      ecg: 'ECG',
+      echo: 'Echocardiogram',
+      pft: 'Pulmonary function test',
+      other: 'examination'
+    };
+    return map[key] || 'examination';
+  }
+
+  function examLabelJP(key){
+    const map = {
+      xray: 'レントゲン',
+      ultrasound: '超音波',
+      ct: 'CT',
+      ecg: '心電図',
+      echo: '心エコー',
+      pft: '呼吸機能検査',
+      other: '検査'
+    };
+    return map[key] || '検査';
+  }
+
+// ====== HELPERS ======
   const pad2 = (n) => String(n).padStart(2, '0');
 
   function todayISO() {
@@ -325,8 +359,8 @@
       return;
     }
     const dateObj = parseISODate(iso);
-    confirmPreviewEN.textContent = 'Your appointment is scheduled as follows.';
-    confirmPreviewJP.textContent = '以下の日程で検査予約が入っています。日付と時間をご確認ください。';
+    confirmPreviewEN.textContent = `Your ${examLabelEN(selectedExam)} appointment is scheduled as follows.`;
+    confirmPreviewJP.textContent = `以下の日程で${examLabelJP(selectedExam)}の予約が入っています。日付と時間をご確認ください。`;
     confirmPreviewDT.textContent = `${formatDateEN(dateObj)} at ${formatTimeEN(confirmTime)}`;
   }
 
@@ -342,6 +376,80 @@
           <div class="patient-dt-jp">スタッフにお声かけください。</div>
         </div>
       `;
+
+    // Attach tap-to-select behavior (patient)
+    const slotsWrap = document.getElementById('patientSlots');
+    const selectedBox = document.getElementById('patientSelected');
+    const selectedEN = document.getElementById('patientSelectedEN');
+    const selectedJP = document.getElementById('patientSelectedJP');
+    const okBtn = document.getElementById('patientConfirmChoiceBtn');
+    const clearBtn = document.getElementById('patientClearChoiceBtn');
+
+    if (slotsWrap) {
+      const slotEls = Array.from(slotsWrap.querySelectorAll('.patient-slot'));
+      slotEls.forEach(el => {
+        el.addEventListener('click', () => {
+          slotEls.forEach(x => x.classList.remove('is-selected'));
+          el.classList.add('is-selected');
+          patientChosenKey = el.getAttribute('data-key');
+
+          const en = el.querySelector('.patient-slot-en')?.textContent || '';
+          const jp = el.querySelector('.patient-slot-jp')?.textContent || '';
+
+          selectedEN.textContent = `Selected: ${en}`;
+          selectedJP.textContent = `選択：${jp}`;
+          selectedBox.style.display = '';
+          okBtn.style.display = '';
+          clearBtn.style.display = '';
+        });
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        patientChosenKey = null;
+        document.querySelectorAll('.patient-slot.is-selected').forEach(x => x.classList.remove('is-selected'));
+        if (selectedBox) selectedBox.style.display = 'none';
+        if (okBtn) okBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+      });
+    }
+
+    if (okBtn) {
+      okBtn.addEventListener('click', () => {
+        if (!patientChosenKey) return;
+
+        const chosen = uniqueSlots(availableSlots).find(s => `${s.dateISO}T${s.timeHM}` === patientChosenKey);
+        if (!chosen) return;
+
+        const d = parseISODate(chosen.dateISO);
+        patientBody.innerHTML = `
+          <div class="patient-msg-en">You selected the following ${examLabelEN(selectedExam)} appointment slot.</div>
+          <div class="patient-msg-jp">以下の${examLabelJP(selectedExam)}の日時を選びました。</div>
+
+          <div class="patient-block">
+            <div class="patient-dt-en">${formatDateEN(d)}</div>
+            <div class="patient-dt-en" style="margin-top:8px;">${formatTimeEN(chosen.timeHM)}</div>
+            <div class="patient-dt-jp">${formatDateJP(d)} ${formatTimeJP(chosen.timeHM)}</div>
+          </div>
+
+          <div class="patient-slot-hint">
+            <div class="patient-slot-jp">Please show this screen to our staff.</div>
+            <div class="patient-slot-jp">※ この画面をスタッフにお見せください。</div>
+          </div>
+
+          <div class="patient-cta">
+            <button class="btn btn-ghost btn-wide" id="patientBackToListBtn" type="button">
+              Back to list / 候補に戻る
+            </button>
+          </div>
+        `;
+
+        const backBtn = document.getElementById('patientBackToListBtn');
+        if (backBtn) backBtn.addEventListener('click', () => renderPatientAvailability());
+      });
+    }
+
       return;
     }
 
@@ -350,7 +458,7 @@
       const en = `${formatDateEN(d)} at ${formatTimeEN(s.timeHM)}`;
       const jp = `${formatDateJP(d)} ${formatTimeJP(s.timeHM)}`;
       return `
-        <div class="patient-slot">
+        <div class="patient-slot" data-key="${s.dateISO}T${s.timeHM}">
           <div class="patient-slot-en">${en}</div>
           <div class="patient-slot-jp">${jp}</div>
         </div>
@@ -358,15 +466,29 @@
     }).join('');
 
     patientBody.innerHTML = `
-      <div class="patient-msg-en">These are the available appointment slots.</div>
-      <div class="patient-msg-jp">以下の日程で検査の空きがあります。ご希望の日時をお選びください。</div>
+      <div class="patient-msg-en">These are the available appointment slots for your ${examLabelEN(selectedExam)}.</div>
+      <div class="patient-msg-jp">以下の日程で${examLabelJP(selectedExam)}の空きがあります。ご希望の日時をお選びください。</div>
 
-      <div class="patient-slots">
+      <div class="patient-slots" id="patientSlots">
         ${slotsHtml}
       </div>
 
       <div class="patient-slot-hint">
         <div class="patient-slot-jp">※ 30分刻みでご案内できます。</div>
+      </div>
+
+      <div class="patient-selected" id="patientSelected" style="display:none;">
+        <div class="patient-selected__en" id="patientSelectedEN">—</div>
+        <div class="patient-selected__jp" id="patientSelectedJP">—</div>
+      </div>
+
+      <div class="patient-cta">
+        <button class="btn btn-primary btn-wide" id="patientConfirmChoiceBtn" type="button" style="display:none;">
+          Confirm / この日時でOK
+        </button>
+        <button class="btn btn-ghost btn-wide" id="patientClearChoiceBtn" type="button" style="display:none;">
+          Choose again / 選び直す
+        </button>
       </div>
     `;
   }
@@ -395,8 +517,8 @@
     }
 
     patientBody.innerHTML = `
-      <div class="patient-msg-en">Your appointment is scheduled as follows.</div>
-      <div class="patient-msg-jp">以下の日程で検査予約が入っています。日付と時間をご確認ください。</div>
+      <div class="patient-msg-en">Your ${examLabelEN(selectedExam)} appointment is scheduled as follows.</div>
+      <div class="patient-msg-jp">以下の日程で${examLabelJP(selectedExam)}の予約が入っています。日付と時間をご確認ください。</div>
 
       <div class="patient-block">
         <div class="patient-dt-en">${formatDateEN(dateObj)}</div>
@@ -440,6 +562,15 @@
 
   tabAvailability.addEventListener('click', () => setActiveTab('availability'));
   tabConfirm.addEventListener('click', () => setActiveTab('confirm'));
+
+  examType.addEventListener('change', () => {
+    selectedExam = examType.value;
+    updateConfirmPreview();
+    if (!patientView.classList.contains('is-hidden')) {
+      if (patientMode === 'availability') renderPatientAvailability();
+      else renderPatientConfirm();
+    }
+  });
 
   dateInput.addEventListener('change', () => {
     selectedTimes = new Set();
