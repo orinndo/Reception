@@ -1,0 +1,507 @@
+// Appointment Assist (No Audio)
+// Staff selects date + 30-min time slots -> patient-ready bilingual display.
+
+(() => {
+  'use strict';
+
+  // ====== CONFIG (edit here if hours change) ======
+  // Based on: Mon-Fri AM 08:30-12:00 / PM 13:00-17:00
+  // Thu PM closed, Sat PM closed, Sun closed.
+  // Holiday is manual toggle (device doesn't have offline Japanese holiday calendar).
+  const HOURS = {
+    mon: [{ start: '08:30', end: '12:00' }, { start: '13:00', end: '17:00' }],
+    tue: [{ start: '08:30', end: '12:00' }, { start: '13:00', end: '17:00' }],
+    wed: [{ start: '08:30', end: '12:00' }, { start: '13:00', end: '17:00' }],
+    thu: [{ start: '08:30', end: '12:00' }], // PM closed
+    fri: [{ start: '08:30', end: '12:00' }, { start: '13:00', end: '17:00' }],
+    sat: [{ start: '08:30', end: '12:00' }], // PM closed
+    sun: [] // closed
+  };
+
+  const SLOT_MINUTES = 30;
+
+  // ====== DOM ======
+  const dateInput = document.getElementById('dateInput');
+  const holidayToggle = document.getElementById('holidayToggle');
+  const customClosedToggle = document.getElementById('customClosedToggle');
+
+  const timeGrid = document.getElementById('timeGrid');
+  const confirmTimeGrid = document.getElementById('confirmTimeGrid');
+  const dayInfo = document.getElementById('dayInfo');
+  const hoursNote = document.getElementById('hoursNote');
+
+  const slotList = document.getElementById('slotList');
+
+  const tabAvailability = document.getElementById('tabAvailability');
+  const tabConfirm = document.getElementById('tabConfirm');
+  const availabilityPanel = document.getElementById('availabilityPanel');
+  const confirmPanel = document.getElementById('confirmPanel');
+
+  const addSlotsBtn = document.getElementById('addSlotsBtn');
+  const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+  const clearSlotsBtn = document.getElementById('clearSlotsBtn');
+  const showAvailabilityBtn = document.getElementById('showAvailabilityBtn');
+
+  const confirmBtn = document.getElementById('confirmBtn');
+  const confirmPreviewEN = document.getElementById('confirmPreviewEN');
+  const confirmPreviewJP = document.getElementById('confirmPreviewJP');
+  const confirmPreviewDT = document.getElementById('confirmPreviewDT');
+
+  const toggleViewBtn = document.getElementById('toggleViewBtn');
+  const staffView = document.getElementById('staffView');
+  const patientView = document.getElementById('patientView');
+  const backToStaffBtn = document.getElementById('backToStaffBtn');
+  const patientBody = document.getElementById('patientBody');
+
+  // ====== STATE ======
+  // selectedTimes: Set of "HH:MM" for current date (availability builder)
+  let selectedTimes = new Set();
+  // availableSlots: array of { dateISO, timeHM }
+  let availableSlots = [];
+  // confirmTime: single "HH:MM"
+  let confirmTime = null;
+
+  // patientMode: 'availability' | 'confirm'
+  let patientMode = 'availability';
+
+  // ====== HELPERS ======
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  function todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  function parseISODate(iso) {
+    // iso: YYYY-MM-DD
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function weekdayKey(dateObj) {
+    // JS: 0=Sun ... 6=Sat
+    const k = ['sun','mon','tue','wed','thu','fri','sat'][dateObj.getDay()];
+    return k;
+  }
+
+  function toMinutes(hm) {
+    const [h, m] = hm.split(':').map(Number);
+    return h * 60 + m;
+  }
+
+  function toHM(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${pad2(h)}:${pad2(m)}`;
+  }
+
+  function clampToStep(mins, step) {
+    return Math.floor(mins / step) * step;
+  }
+
+  function generateSlotsForRanges(ranges) {
+    // ranges: [{start:'08:30', end:'12:00'}, ...] inclusive of start, inclusive of end if matches step
+    const slots = [];
+    for (const r of ranges) {
+      const start = toMinutes(r.start);
+      const end = toMinutes(r.end);
+      // start must align; if not, we still include it as-is then step.
+      let cur = start;
+      // Ensure we don't create a slot that starts after end
+      while (cur <= end) {
+        slots.push(toHM(cur));
+        cur += SLOT_MINUTES;
+      }
+      // Note: If you want end to be exclusive (i.e., last slot start <= end - 30), change loop condition.
+    }
+    // Deduplicate (in case of overlapping ranges)
+    return Array.from(new Set(slots));
+  }
+
+  function formatDateEN(dateObj) {
+    // Thursday, February 5, 2026
+    const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(dateObj);
+    const month = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(dateObj);
+    const day = dateObj.getDate();
+    const year = dateObj.getFullYear();
+    return `${weekday}, ${month} ${day}, ${year}`;
+  }
+
+  function formatDateJP(dateObj) {
+    // 2026年2月5日（木）
+    const y = dateObj.getFullYear();
+    const m = dateObj.getMonth() + 1;
+    const d = dateObj.getDate();
+    const w = ['日','月','火','水','木','金','土'][dateObj.getDay()];
+    return `${y}年${m}月${d}日（${w}）`;
+  }
+
+  function formatTimeEN(hm) {
+    // 13:30 -> 1:30 PM
+    const [h, m] = hm.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = ((h + 11) % 12) + 1;
+    return `${h12}:${pad2(m)} ${ampm}`;
+  }
+
+  function formatTimeJP(hm) {
+    const [h, m] = hm.split(':').map(Number);
+    const isAM = h < 12;
+    const label = isAM ? '午前' : '午後';
+    const h12 = ((h + 11) % 12) + 1;
+    if (m === 0) return `${label}${h12}時`;
+    return `${label}${h12}時${m}分`;
+  }
+
+  function isClosedByRule(dateObj) {
+    const key = weekdayKey(dateObj);
+    return (HOURS[key] || []).length === 0;
+  }
+
+  function isClosedByToggle() {
+    return holidayToggle.checked || customClosedToggle.checked;
+  }
+
+  function currentHoursForDate(dateObj) {
+    const key = weekdayKey(dateObj);
+    return HOURS[key] || [];
+  }
+
+  function sortSlots(slots) {
+    // slots: [{dateISO,timeHM}]
+    return slots.slice().sort((a,b) => {
+      if (a.dateISO !== b.dateISO) return a.dateISO.localeCompare(b.dateISO);
+      return toMinutes(a.timeHM) - toMinutes(b.timeHM);
+    });
+  }
+
+  function uniqueSlots(slots) {
+    const seen = new Set();
+    const out = [];
+    for (const s of slots) {
+      const k = `${s.dateISO}T${s.timeHM}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(s);
+    }
+    return out;
+  }
+
+  // ====== RENDER ======
+  function renderDayInfo(dateObj) {
+    const key = weekdayKey(dateObj);
+    const wJP = ['日','月','火','水','木','金','土'][dateObj.getDay()];
+    dayInfo.textContent = `${key.toUpperCase()} / ${wJP}`;
+  }
+
+  function renderHoursNote(dateObj) {
+    if (isClosedByToggle()) {
+      hoursNote.innerHTML = `この日は <strong>休診扱い</strong> です（祝日/臨時休診フラグ）。`;
+      return;
+    }
+    const ranges = currentHoursForDate(dateObj);
+    if (!ranges.length) {
+      hoursNote.innerHTML = `この日は <strong>休診日</strong> です（時間枠は表示しません）。`;
+      return;
+    }
+    const list = ranges.map(r => `${r.start}〜${r.end}`).join(' / ');
+    hoursNote.innerHTML = `この日の受付時間（設定）： <strong>${list}</strong> ／ 時間枠は<strong>30分刻み</strong>で表示します。`;
+  }
+
+  function buildTimeButtons(container, slots, selectedSet, disabledAll) {
+    container.innerHTML = '';
+    if (disabledAll) {
+      const p = document.createElement('div');
+      p.className = 'note';
+      p.textContent = 'この日は休診のため、時間枠を選択できません。';
+      container.appendChild(p);
+      return;
+    }
+
+    slots.forEach(hm => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'time-btn';
+      btn.textContent = hm;
+      if (selectedSet && selectedSet.has(hm)) btn.classList.add('is-selected');
+
+      btn.addEventListener('click', () => {
+        // toggle selection
+        if (!selectedSet) return;
+        if (selectedSet.has(hm)) selectedSet.delete(hm);
+        else selectedSet.add(hm);
+        btn.classList.toggle('is-selected');
+      });
+
+      container.appendChild(btn);
+    });
+  }
+
+  function renderTimeGrids() {
+    const iso = dateInput.value;
+    if (!iso) {
+      timeGrid.innerHTML = '<div class="note">まず日付を選択してください。</div>';
+      confirmTimeGrid.innerHTML = '<div class="note">まず日付を選択してください。</div>';
+      dayInfo.textContent = '—';
+      hoursNote.textContent = '';
+      return;
+    }
+    const dateObj = parseISODate(iso);
+
+    renderDayInfo(dateObj);
+    renderHoursNote(dateObj);
+
+    const disabledAll = isClosedByToggle() || isClosedByRule(dateObj);
+    const ranges = currentHoursForDate(dateObj);
+    const slots = disabledAll ? [] : generateSlotsForRanges(ranges);
+
+    // Availability panel grid
+    buildTimeButtons(timeGrid, slots, selectedTimes, disabledAll);
+
+    // Confirm panel grid (single-select)
+    renderConfirmGrid(slots, disabledAll);
+
+    // Update confirm preview if needed
+    updateConfirmPreview();
+  }
+
+  function renderConfirmGrid(slots, disabledAll) {
+    confirmTimeGrid.innerHTML = '';
+    if (disabledAll) {
+      const p = document.createElement('div');
+      p.className = 'note';
+      p.textContent = 'この日は休診のため、予約確定の時間枠を選択できません。';
+      confirmTimeGrid.appendChild(p);
+      return;
+    }
+
+    slots.forEach(hm => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'time-btn';
+      btn.textContent = hm;
+      if (confirmTime === hm) btn.classList.add('is-selected');
+
+      btn.addEventListener('click', () => {
+        confirmTime = hm;
+        // re-render to keep single-select styling
+        renderConfirmGrid(slots, false);
+        updateConfirmPreview();
+      });
+
+      confirmTimeGrid.appendChild(btn);
+    });
+  }
+
+  function renderSlotList() {
+    slotList.innerHTML = '';
+    if (!availableSlots.length) {
+      slotList.innerHTML = '<div class="note">まだ空き枠がありません。左の時間枠を選んで追加してください。</div>';
+      return;
+    }
+
+    const sorted = sortSlots(uniqueSlots(availableSlots));
+    sorted.forEach((s, idx) => {
+      const dateObj = parseISODate(s.dateISO);
+      const el = document.createElement('div');
+      el.className = 'slot';
+      el.title = 'タップで削除';
+      el.innerHTML = `
+        <div class="slot__en">${formatDateEN(dateObj)} at ${formatTimeEN(s.timeHM)}</div>
+        <div class="slot__jp">${formatDateJP(dateObj)} ${formatTimeJP(s.timeHM)}</div>
+        <div class="slot__meta">${s.dateISO} / ${s.timeHM}</div>
+      `;
+      el.addEventListener('click', () => {
+        // remove by matching key
+        const key = `${s.dateISO}T${s.timeHM}`;
+        availableSlots = availableSlots.filter(x => `${x.dateISO}T${x.timeHM}` !== key);
+        renderSlotList();
+      });
+      slotList.appendChild(el);
+    });
+  }
+
+  function updateConfirmPreview() {
+    const iso = dateInput.value;
+    if (!iso || !confirmTime || isClosedByToggle() || isClosedByRule(parseISODate(iso))) {
+      confirmPreviewEN.textContent = '—';
+      confirmPreviewJP.textContent = '—';
+      confirmPreviewDT.textContent = '—';
+      return;
+    }
+    const dateObj = parseISODate(iso);
+    confirmPreviewEN.textContent = 'Your appointment is scheduled as follows.';
+    confirmPreviewJP.textContent = '以下の日程で検査予約が入っています。日付と時間をご確認ください。';
+    confirmPreviewDT.textContent = `${formatDateEN(dateObj)} at ${formatTimeEN(confirmTime)}`;
+  }
+
+  // ====== PATIENT RENDER ======
+  function renderPatientAvailability() {
+    const sorted = sortSlots(uniqueSlots(availableSlots));
+    if (!sorted.length) {
+      patientBody.innerHTML = `
+        <div class="patient-msg-en">No available appointment slots are shown.</div>
+        <div class="patient-msg-jp">現在、提示できる空き枠が表示されていません。</div>
+        <div class="patient-block">
+          <div class="patient-dt-en">Please ask our staff.</div>
+          <div class="patient-dt-jp">スタッフにお声かけください。</div>
+        </div>
+      `;
+      return;
+    }
+
+    const slotsHtml = sorted.map(s => {
+      const d = parseISODate(s.dateISO);
+      const en = `${formatDateEN(d)} at ${formatTimeEN(s.timeHM)}`;
+      const jp = `${formatDateJP(d)} ${formatTimeJP(s.timeHM)}`;
+      return `
+        <div class="patient-slot">
+          <div class="patient-slot-en">${en}</div>
+          <div class="patient-slot-jp">${jp}</div>
+        </div>
+      `;
+    }).join('');
+
+    patientBody.innerHTML = `
+      <div class="patient-msg-en">These are the available appointment slots.</div>
+      <div class="patient-msg-jp">以下の日程で検査の空きがあります。ご希望の日時をお選びください。</div>
+
+      <div class="patient-slots">
+        ${slotsHtml}
+      </div>
+
+      <div class="patient-slot-hint">
+        <div class="patient-slot-jp">※ 30分刻みでご案内できます。</div>
+      </div>
+    `;
+  }
+
+  function renderPatientConfirm() {
+    const iso = dateInput.value;
+    if (!iso || !confirmTime) {
+      patientBody.innerHTML = `
+        <div class="patient-msg-en">Your appointment details are not selected yet.</div>
+        <div class="patient-msg-jp">予約日時がまだ選択されていません。</div>
+      `;
+      return;
+    }
+    const dateObj = parseISODate(iso);
+
+    if (isClosedByToggle() || isClosedByRule(dateObj)) {
+      patientBody.innerHTML = `
+        <div class="patient-msg-en">Our reception desk is closed on this date.</div>
+        <div class="patient-msg-jp">この日は休診のため、受付できません。</div>
+        <div class="patient-block">
+          <div class="patient-dt-en">Please choose another date.</div>
+          <div class="patient-dt-jp">別の日程をご提案します。</div>
+        </div>
+      `;
+      return;
+    }
+
+    patientBody.innerHTML = `
+      <div class="patient-msg-en">Your appointment is scheduled as follows.</div>
+      <div class="patient-msg-jp">以下の日程で検査予約が入っています。日付と時間をご確認ください。</div>
+
+      <div class="patient-block">
+        <div class="patient-dt-en">${formatDateEN(dateObj)}</div>
+        <div class="patient-dt-en" style="margin-top:8px;">${formatTimeEN(confirmTime)}</div>
+        <div class="patient-dt-jp">${formatDateJP(dateObj)} ${formatTimeJP(confirmTime)}</div>
+      </div>
+    `;
+  }
+
+  function showPatient(mode) {
+    patientMode = mode;
+    if (mode === 'availability') renderPatientAvailability();
+    else renderPatientConfirm();
+
+    staffView.classList.add('is-hidden');
+    patientView.classList.remove('is-hidden');
+
+    toggleViewBtn.textContent = 'スタッフ画面に戻る / Back';
+  }
+
+  function showStaff() {
+    patientView.classList.add('is-hidden');
+    staffView.classList.remove('is-hidden');
+    toggleViewBtn.textContent = '患者画面に切替 / Show to patient';
+  }
+
+  // ====== EVENTS ======
+  function setActiveTab(which) {
+    if (which === 'availability') {
+      tabAvailability.classList.add('is-active');
+      tabConfirm.classList.remove('is-active');
+      availabilityPanel.classList.add('is-active');
+      confirmPanel.classList.remove('is-active');
+    } else {
+      tabAvailability.classList.remove('is-active');
+      tabConfirm.classList.add('is-active');
+      availabilityPanel.classList.remove('is-active');
+      confirmPanel.classList.add('is-active');
+    }
+  }
+
+  tabAvailability.addEventListener('click', () => setActiveTab('availability'));
+  tabConfirm.addEventListener('click', () => setActiveTab('confirm'));
+
+  dateInput.addEventListener('change', () => {
+    selectedTimes = new Set();
+    confirmTime = null;
+    renderTimeGrids();
+    renderSlotList();
+  });
+
+  holidayToggle.addEventListener('change', renderTimeGrids);
+  customClosedToggle.addEventListener('change', renderTimeGrids);
+
+  clearSelectionBtn.addEventListener('click', () => {
+    selectedTimes = new Set();
+    renderTimeGrids();
+  });
+
+  addSlotsBtn.addEventListener('click', () => {
+    const iso = dateInput.value;
+    if (!iso) return alert('日付を選択してください。');
+    if (isClosedByToggle() || isClosedByRule(parseISODate(iso))) {
+      return alert('休診日のため、空き枠を追加できません。');
+    }
+    if (!selectedTimes.size) return alert('時間枠を選択してください。');
+
+    const add = Array.from(selectedTimes).map(t => ({ dateISO: iso, timeHM: t }));
+    availableSlots = uniqueSlots(availableSlots.concat(add));
+    selectedTimes = new Set();
+    renderTimeGrids();
+    renderSlotList();
+  });
+
+  clearSlotsBtn.addEventListener('click', () => {
+    availableSlots = [];
+    renderSlotList();
+  });
+
+  showAvailabilityBtn.addEventListener('click', () => showPatient('availability'));
+
+  confirmBtn.addEventListener('click', () => {
+    if (!dateInput.value) return alert('日付を選択してください。');
+    if (!confirmTime) return alert('時間枠を選択してください。');
+    showPatient('confirm');
+  });
+
+  toggleViewBtn.addEventListener('click', () => {
+    if (patientView.classList.contains('is-hidden')) {
+      // show patient based on last used mode
+      showPatient(patientMode);
+    } else {
+      showStaff();
+    }
+  });
+
+  backToStaffBtn.addEventListener('click', showStaff);
+
+  // ====== INIT ======
+  dateInput.value = todayISO();
+  renderTimeGrids();
+  renderSlotList();
+})();

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>検査予約アシスト / Appointment Assist</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand__title">検査予約アシスト</div>
+      <div class="brand__subtitle">Appointment Assist</div>
+    </div>
+
+    <div class="header-actions">
+      <button id="toggleViewBtn" class="btn btn-primary" type="button">
+        患者画面に切替 / Show to patient
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- STAFF VIEW -->
+    <section id="staffView" class="view">
+      <div class="card">
+        <div class="card__title">受付操作（スタッフ用）</div>
+        <div class="card__subtitle">日付と空き時間を選んで、患者さんに見せる画面を自動生成します。</div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="dateInput" class="label">日付（西暦）</label>
+            <input id="dateInput" type="date" class="input" />
+          </div>
+
+          <div class="field">
+            <label class="label">休診日フラグ</label>
+            <div class="switches">
+              <label class="check">
+                <input id="holidayToggle" type="checkbox" />
+                <span>祝日として扱う</span>
+              </label>
+              <label class="check">
+                <input id="customClosedToggle" type="checkbox" />
+                <span>本日休診（臨時）</span>
+              </label>
+            </div>
+            <div class="hint">
+              ※ 祝日判定は端末単体では自動取得できないため、必要時にONにしてください。
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="tabs">
+          <button id="tabAvailability" class="tab is-active" type="button">空き枠を提示</button>
+          <button id="tabConfirm" class="tab" type="button">予約を確定</button>
+        </div>
+
+        <!-- Availability builder -->
+        <section id="availabilityPanel" class="panel is-active" aria-label="空き枠を提示">
+          <div class="panel-row">
+            <div class="panel-col">
+              <div class="label-row">
+                <div class="label">30分刻みの時間枠</div>
+                <div id="dayInfo" class="badge">—</div>
+              </div>
+              <div id="timeGrid" class="time-grid" aria-live="polite"></div>
+
+              <div class="actions">
+                <button id="clearSelectionBtn" class="btn btn-ghost" type="button">選択をクリア</button>
+                <button id="addSlotsBtn" class="btn btn-primary" type="button">選択した枠を「空き枠」に追加</button>
+              </div>
+
+              <div id="hoursNote" class="note"></div>
+            </div>
+
+            <div class="panel-col">
+              <div class="label-row">
+                <div class="label">提示する空き枠（編集可）</div>
+                <div class="badge badge--muted">タップで削除</div>
+              </div>
+
+              <div id="slotList" class="slot-list" aria-live="polite"></div>
+
+              <div class="actions">
+                <button id="clearSlotsBtn" class="btn btn-ghost" type="button">空き枠を全削除</button>
+                <button id="showAvailabilityBtn" class="btn btn-primary" type="button">患者画面：空き枠を表示</button>
+              </div>
+
+              <div class="hint">
+                ※ 連続・非連続・ランダムな空きに対応。空いている枠だけ追加してください。
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Confirm appointment -->
+        <section id="confirmPanel" class="panel" aria-label="予約を確定">
+          <div class="panel-row">
+            <div class="panel-col">
+              <div class="label-row">
+                <div class="label">予約したい日時を選択</div>
+                <div class="badge badge--muted">30分刻み</div>
+              </div>
+
+              <div id="confirmTimeGrid" class="time-grid" aria-live="polite"></div>
+
+              <div class="actions">
+                <button id="confirmBtn" class="btn btn-primary" type="button">患者画面：予約確定を表示</button>
+              </div>
+
+              <div class="note">
+                ※ 空き枠の提示ではなく、特定の日時で予約を確定したいときに使います。
+              </div>
+            </div>
+
+            <div class="panel-col">
+              <div class="label-row">
+                <div class="label">確定表示プレビュー</div>
+                <div class="badge">英語＋日本語</div>
+              </div>
+
+              <div class="preview">
+                <div class="preview__en" id="confirmPreviewEN">—</div>
+                <div class="preview__jp" id="confirmPreviewJP">—</div>
+                <div class="preview__dt" id="confirmPreviewDT">—</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="card card--small">
+        <div class="card__title">運用メモ</div>
+        <ul class="bullets">
+          <li>患者さんに見せるときは「患者画面に切替」を押してください。</li>
+          <li>時間は自動で <strong>AM/PM</strong> 表記に変換され、西暦・曜日も表示されます。</li>
+          <li>営業時間ルールは <code>script.js</code> の <code>HOURS</code> を編集すると変更できます。</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- PATIENT VIEW -->
+    <section id="patientView" class="view is-hidden" aria-label="患者表示">
+      <div class="patient-wrap">
+        <div class="patient-card">
+          <div class="patient-header">
+            <div class="patient-title">Radiology Appointment</div>
+            <div class="patient-subtitle">検査予約のご案内</div>
+          </div>
+
+          <div id="patientBody" class="patient-body" aria-live="polite">
+            <!-- injected -->
+          </div>
+
+          <div class="patient-footer">
+            <button id="backToStaffBtn" class="btn btn-ghost btn-wide" type="button">
+              スタッフ画面に戻る / Back
+            </button>
+          </div>
+        </div>
+
+        <div class="patient-tip">
+          <div class="patient-tip__en">Please read the English text above.</div>
+          <div class="patient-tip__jp">上の英語をご確認ください。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
