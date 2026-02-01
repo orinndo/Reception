@@ -104,6 +104,12 @@
   }
 
 
+
+  function slotKey(s){
+    const ek = s.examKey || 'unknown';
+    return `${s.dateISO}T${s.timeHM}|${ek}`;
+  }
+
 // ====== HELPERS ======
   const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -219,7 +225,7 @@
     const seen = new Set();
     const out = [];
     for (const s of slots) {
-      const k = `${s.dateISO}T${s.timeHM}`;
+      const k = slotKey(s);
       if (seen.has(k)) continue;
       seen.add(k);
       out.push(s);
@@ -342,7 +348,7 @@
             <div class="slot__en">${formatDateEN(dateObj)} at ${formatTimeEN(s.timeHM)}</div>
             <div class="slot__jp">${formatDateJP(dateObj)} ${formatTimeJP(s.timeHM)}</div>
             <div class="slot__meta">${s.dateISO} / ${s.timeHM}</div>
-        <div class="slot__exam">${examLabelJP(selectedExam)}</div>
+        <div class="slot__exam">${examLabelJP(s.examKey || selectedExam)}</div>
           </div>
           <button class="slot__delete" type="button" aria-label="削除">削除</button>
         </div>
@@ -350,8 +356,8 @@
       const delBtn = el.querySelector('.slot__delete');
       delBtn.addEventListener('click', (ev) => {
         ev.stopPropagation();
-        const key = `${s.dateISO}T${s.timeHM}`;
-        availableSlots = availableSlots.filter(x => `${x.dateISO}T${x.timeHM}` !== key);
+        const key = slotKey(s);
+        availableSlots = availableSlots.filter(x => slotKey(x) !== key);
         renderSlotList();
       });
 
@@ -428,13 +434,13 @@
       okBtn.addEventListener('click', () => {
         if (!patientChosenKey) return;
 
-        const chosen = uniqueSlots(availableSlots).find(s => `${s.dateISO}T${s.timeHM}` === patientChosenKey);
+        const chosen = uniqueSlots(availableSlots).find(s => slotKey(s) === patientChosenKey);
         if (!chosen) return;
 
         const d = parseISODate(chosen.dateISO);
         patientBody.innerHTML = `
-          <div class="patient-msg-en">You selected the following ${examLabelEN(selectedExam)} appointment slot.</div>
-          <div class="patient-msg-jp">以下の${examLabelJP(selectedExam)}の日時を選びました。</div>
+          <div class="patient-msg-en">You selected the following ${examLabelEN(chosen.examKey || selectedExam)} appointment slot.</div>
+          <div class="patient-msg-jp">以下の${examLabelJP(chosen.examKey || selectedExam)}の日時を選びました。</div>
 
           <div class="patient-block">
             <div class="patient-dt-en">${formatDateEN(d)}</div>
@@ -467,7 +473,7 @@
       const en = `${formatDateEN(d)} at ${formatTimeEN(s.timeHM)}`;
       const jp = `${formatDateJP(d)} ${formatTimeJP(s.timeHM)}`;
       return `
-        <div class="patient-slot" data-key="${s.dateISO}T${s.timeHM}">
+        <div class="patient-slot" data-key="${slotKey(s)}">
           <div class="patient-slot-en">${en}</div>
           <div class="patient-slot-jp">${jp}</div>
         </div>
@@ -475,8 +481,8 @@
     }).join('');
 
     patientBody.innerHTML = `
-      <div class="patient-msg-en">These are the available appointment slots for your ${examLabelEN(selectedExam)}.</div>
-      <div class="patient-msg-jp">以下の日程で${examLabelJP(selectedExam)}の空きがあります。ご希望の日時をお選びください。</div>
+      <div class="patient-msg-en">${multiExam ? 'These are the available appointment slots.' : `These are the available appointment slots for your ${examLabelEN(selectedExam)}.`}</div>
+      <div class="patient-msg-jp">${multiExam ? '以下の日程で検査の空きがあります。ご希望の日時をお選びください。' : `以下の日程で${examLabelJP(selectedExam)}の空きがあります。ご希望の日時をお選びください。`}</div>
 
       <div class="patient-slots" id="patientSlots">
         ${slotsHtml}
@@ -602,7 +608,7 @@
     }
     if (!selectedTimes.size) return alert('時間枠を選択してください。');
 
-    const add = Array.from(selectedTimes).map(t => ({ dateISO: iso, timeHM: t }));
+    const add = Array.from(selectedTimes).map(t => ({ dateISO: iso, timeHM: t, examKey: selectedExam }));
     availableSlots = uniqueSlots(availableSlots.concat(add));
     selectedTimes = new Set();
     renderTimeGrids();
