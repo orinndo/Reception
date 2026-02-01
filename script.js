@@ -547,6 +547,7 @@
 
   function showPatient(mode) {
     patientMode = mode;
+    document.body.dataset.lastPatientMode = mode;
 
     // Switch view first so the button always "does something"
     staffView.classList.add('is-hidden');
